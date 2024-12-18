@@ -5,12 +5,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
 use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
 
-new class extends Component
-{
+new class extends Component {
     public string $name = '';
     public string $email = '';
     public ?string $nim = '';
+    public ?UploadedFile $cv = null;
 
     /**
      * Mount the component.
@@ -20,7 +21,7 @@ new class extends Component
         $this->name = Auth::user()->name;
         $this->email = Auth::user()->email;
         $this->nim = Auth::user()->nim;
-        $this->cv = Auth::user()->nim;
+        $this->cv = Auth::user()->cv;
     }
 
     /**
@@ -31,12 +32,19 @@ new class extends Component
         $user = Auth::user();
 
         $validated = $this->validate([
-            'nim' => ['required', 'string', 'max:15'],
+            'nim' => ['string', 'max:15'],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
+            'cv' => ['nullable', 'file', 'mimes:pdf,docx,doc,png,jpg'],
         ]);
 
         $user->fill($validated);
+
+        if ($this->cv instanceof UploadedFile) {
+            $user->cv_blob = file_get_contents($this->cv->getRealPath()); // Store file binary
+            $user->cv_name = $this->cv->getClientOriginalName(); // Save file name
+            $user->cv_mime = $this->cv->getMimeType(); // Save MIME type
+        }
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
@@ -80,22 +88,25 @@ new class extends Component
 
     <form wire:submit="updateProfileInformation" class="w-full mt-6 space-y-10">
         <div>
-            <x-input-label for="name" :value="__('Name')" class="flex flex-col items-center justify-center mx-auto"/>
-            <x-text-input wire:model="name" id="name" name="name" type="text" class="mt-1 block w-full text-center" required autofocus autocomplete="name" />
+            <x-input-label for="name" :value="__('Name')" class="flex flex-col items-center justify-center mx-auto" />
+            <x-text-input wire:model="name" id="name" name="name" type="text"
+                class="mt-1 block w-full text-center" required autofocus autocomplete="name" />
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
         </div>
 
         <div>
-            <x-input-label for="email" :value="__('Email')" class="flex flex-col items-center justify-center mx-auto"/>
-            <x-text-input wire:model="email" id="email" name="email" type="email" class="mt-1 block w-full text-center" required autocomplete="username" />
+            <x-input-label for="email" :value="__('Email')" class="flex flex-col items-center justify-center mx-auto" />
+            <x-text-input wire:model="email" id="email" name="email" type="email"
+                class="mt-1 block w-full text-center" required autocomplete="username" />
             <x-input-error class="mt-2" :messages="$errors->get('email')" />
 
-            @if (auth()->user() instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! auth()->user()->hasVerifiedEmail())
+            @if (auth()->user() instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && !auth()->user()->hasVerifiedEmail())
                 <div>
                     <p class="text-sm mt-2 text-gray-800 dark:text-gray-200">
                         {{ __('Your email address is unverified.') }}
 
-                        <button wire:click.prevent="sendVerification" class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
+                        <button wire:click.prevent="sendVerification"
+                            class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
                             {{ __('Click here to re-send the verification email.') }}
                         </button>
                     </p>
@@ -110,22 +121,25 @@ new class extends Component
         </div>
 
         <div>
-            <x-input-label for="nim" :value="__('NIM')" class="flex flex-col items-center justify-center mx-auto"/>
-            <x-text-input wire:model="nim" id="nim" name="nim" type="text" class="mt-1 block w-full text-center" required autocomplete="nim" />
+            <x-input-label for="nim" :value="__('NIM')" class="flex flex-col items-center justify-center mx-auto" />
+            <x-text-input wire:model="nim" id="nim" name="nim" type="text"
+                class="mt-1 block w-full text-center" required autocomplete="nim" />
             <x-input-error class="mt-2" :messages="$errors->get('nim')" />
         </div>
 
         <div>
-            <x-input-label for="cv" :value="__('Curriculum Vitae')" class="flex flex-col items-center justify-center mx-auto"/>
-            <input wire:model="cv" id="cv" name="cv" type="file" class="block mx-auto border border-gray-300 rounded-sm"
-            autocomplete="cv">
+            <x-input-label for="cv" :value="__('Curriculum Vitae')" class="flex flex-col items-center justify-center mx-auto" />
+            <input wire:model="cv" id="cv" name="cv" type="file"
+                class="block mx-auto border border-gray-300 rounded-sm" autocomplete="cv">
             <x-input-error class="mt-2" :messages="$errors->get('cv')" />
         </div>
 
         <div class="text-center gap-4 h-[50%]">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 
-            <x-action-message class="fixed bottom-8 left-[15%] right-0 mx-auto max-w-[150px] py-1 text-center text-white text-xl bg-secondary bg-opacity-90 backdrop-blur-md rounded-full z-50" on="profile-updated">
+            <x-action-message
+                class="fixed bottom-8 left-[15%] right-0 mx-auto max-w-[150px] py-1 text-center text-white text-xl bg-secondary bg-opacity-90 backdrop-blur-md rounded-full z-50"
+                on="profile-updated">
                 {{ __('Saved.') }}
             </x-action-message>
         </div>

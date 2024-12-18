@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class EventCheckin extends Model
 {
     use HasFactory;
+    public $timestamps = false;
 
     protected $fillable = ['users_events_events_id', 'users_events_users_id', 'checkin_at'];
 
