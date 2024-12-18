@@ -76,22 +76,6 @@ class UserEventController extends Controller
         return redirect()->back()->with('success', 'You have successfully checked in.');
     }
 
-
-    public function cancel(Request $request, $eventId)
-    {
-        $userId = Auth::id();
-
-        $booking = UserEvent::where('user_id', $userId)
-            ->where('event_id', $eventId)
-            ->first();
-
-        $booking->delete();
-
-        Event::where('id', $eventId)->decrement('slot_terisi');
-
-        return redirect()->back()->with('success', 'Your booking has been cancelled.');
-    }
-
     public function myBookings()
     {
         $user = Auth::user();
@@ -127,13 +111,5 @@ class UserEventController extends Controller
         }
 
         return view('events.details', ['event' => $event]);
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
     }
 }
